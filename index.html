@@ -1,199 +1,399 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Mic, Wifi, Bluetooth, Radio, Signal, Battery, Activity, ShieldCheck, ChevronUp, ChevronDown } from 'lucide-react';
-
-const App = () => {
-  const [channel, setChannel] = useState(1);
-  const [isTalking, setIsTalking] = useState(false);
-  const [connMode, setConnMode] = useState('wifi'); // 'wifi', 'data', 'bt', 'radio'
-  const [volume, setVolume] = useState(85);
-  
-  // Simulasi Audio Context untuk efek suara beep
-  const playBeep = (freq, duration) => {
-    try {
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + duration);
-    } catch (e) {
-      console.log("Audio not supported or blocked");
-    }
-  };
-
-  const handleStartTalking = () => {
-    setIsTalking(true);
-    playBeep(880, 0.1);
-  };
-
-  const handleStopTalking = () => {
-    setIsTalking(false);
-    playBeep(440, 0.15);
-  };
-
-  const changeChannel = (dir) => {
-    let newChan = channel + dir;
-    if (newChan > 16) newChan = 1;
-    if (newChan < 1) newChan = 16;
-    setChannel(newChan);
-    playBeep(1200, 0.05);
-  };
-
-  // Status deskripsi berdasarkan mode
-  const getModeInfo = () => {
-    switch(connMode) {
-      case 'wifi': return { label: 'WIFI LOKAL', tag: 'P2P', desc: 'Terhubung via hotspot tanpa internet.' };
-      case 'data': return { label: 'PAKET DATA', tag: 'CLOUD', desc: 'Terhubung jarak jauh via server internet.' };
-      case 'bt': return { label: 'BLUETOOTH', tag: 'MESH', desc: 'Koneksi langsung antar perangkat jarak dekat.' };
-      case 'radio': return { label: 'RADIO SIM', tag: 'RF', desc: 'Simulasi frekuensi radio UHF/VHF.' };
-      default: return { label: '', tag: '', desc: '' };
-    }
-  };
-
-  const modeInfo = getModeInfo();
-
-  return (
-    <div className="flex flex-col min-h-screen bg-neutral-950 text-white font-sans select-none items-center p-4">
-      {/* Status Bar Simulasi */}
-      <div className="w-full max-w-md flex justify-between items-center px-4 py-2 opacity-60 text-[10px] font-bold">
-        <span>12:00</span>
-        <div className="flex gap-2 items-center">
-          <Bluetooth size={10} />
-          <Wifi size={10} />
-          <Battery size={12} />
-        </div>
-      </div>
-
-      {/* Header */}
-      <div className="w-full max-center max-w-md flex justify-between items-center mt-4">
-        <h1 className="text-2xl font-black italic tracking-tighter text-yellow-500">PRO-TALKIE</h1>
-        <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 px-3 py-1 rounded-full">
-          <div className={`w-2 h-2 rounded-full ${isTalking ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`} />
-          <span className="text-[10px] uppercase font-bold text-neutral-400">{isTalking ? 'Transmitting' : 'Ready'}</span>
-        </div>
-      </div>
-
-      {/* Screen Display */}
-      <div className="w-full max-w-md bg-black border-2 border-neutral-800 rounded-2xl p-6 mt-6 shadow-inner relative overflow-hidden">
-        {/* Scanlines Effect */}
-        <div className="absolute inset-0 pointer-events-none opacity-5 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%]" />
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>SECURE-TALK P2P</title>
+    <!-- Tailwind CSS untuk styling cepat dan modern -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons untuk ikon vektor yang tajam -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&display=swap');
         
-        <div className="flex justify-between">
-          <div>
-            <p className="text-[10px] text-yellow-800 font-bold uppercase tracking-widest">Channel</p>
-            <span className="text-5xl font-mono font-bold text-yellow-500 leading-none">
-              {channel.toString().padStart(2, '0')}
-            </span>
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] text-yellow-800 font-bold uppercase tracking-widest">Network Mode</p>
-            <p className="text-sm font-bold text-yellow-500">{modeInfo.label}</p>
-            <div className="flex justify-end gap-0.5 mt-2">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className={`w-1.5 rounded-t-sm ${i <= 3 ? 'bg-yellow-500' : 'bg-neutral-800'}`} style={{ height: i * 3 }} />
-              ))}
+        :root {
+            --emerald-glow: 0 0 15px rgba(52, 211, 153, 0.3);
+        }
+
+        body {
+            background-color: #000;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none; /* Mencegah pull-to-refresh dan scroll browser */
+        }
+
+        .font-mono-digital {
+            font-family: 'JetBrains+Mono', monospace;
+        }
+
+        /* Efek garis-garis layar retro (Scanline) */
+        .scanline::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        /* Tinggi dinamis untuk layar Android agar tidak terpotong bar navigasi browser */
+        .full-height {
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        /* Menghilangkan kotak biru saat tombol di tap pada Android */
+        * {
+            -webkit-tap-highlight-color: transparent;
+            outline: none !important;
+        }
+
+        .active-pulse {
+            animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse-ring {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+    </style>
+</head>
+<body class="text-white flex justify-center items-start overflow-hidden">
+
+    <div id="app" class="w-full max-w-md flex flex-col items-center full-height p-4 pt-safe">
+        
+        <!-- Bar Status Mockup (Jam & Sinyal) -->
+        <div class="w-full flex justify-between items-center px-4 py-2 opacity-40">
+            <span id="clock" class="text-xs font-bold font-mono">00:00</span>
+            <div class="flex gap-2 items-center">
+                <i data-lucide="signal" class="w-3 h-3 text-emerald-500"></i>
+                <i data-lucide="wifi" class="w-3 h-3"></i>
+                <i data-lucide="battery" class="w-3 h-3"></i>
             </div>
-          </div>
         </div>
 
-        <div className="mt-6 flex justify-between items-end">
-          <div className="bg-yellow-900/20 px-2 py-0.5 rounded border border-yellow-700/30">
-            <span className="text-[10px] text-yellow-600 font-bold uppercase">{modeInfo.tag}</span>
-          </div>
-          <div className="flex items-center gap-2 text-neutral-500">
-            <Activity size={12} />
-            <span className="text-[10px] font-mono">ENCRYPTED</span>
-          </div>
+        <!-- Panel Privasi Atas -->
+        <div class="w-full flex justify-between items-center px-4 py-3 mt-2 bg-neutral-900/30 rounded-t-3xl border-x border-t border-neutral-800">
+            <div class="flex gap-2 items-center">
+                <i data-lucide="server-off" class="w-3.5 h-3.5 text-red-500"></i>
+                <span class="text-[9px] font-bold text-neutral-400 tracking-widest uppercase">P2P No Cloud</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="flex gap-1 items-center">
+                    <i data-lucide="zap" class="w-3 h-3 text-yellow-500"></i>
+                    <span class="text-[8px] font-bold text-neutral-400 uppercase">Auto-RX</span>
+                </div>
+                <div class="flex gap-1 items-center">
+                    <i data-lucide="lock" class="w-3 h-3 text-emerald-500"></i>
+                    <span class="text-[8px] font-bold text-emerald-500 uppercase">Secure</span>
+                </div>
+            </div>
         </div>
-      </div>
 
-      {/* Connection Selector */}
-      <div className="w-full max-w-md grid grid-cols-4 gap-2 mt-6">
-        {[
-          { id: 'wifi', icon: <Wifi size={18} />, label: 'WIFI' },
-          { id: 'data', icon: <Signal size={18} />, label: 'DATA' },
-          { id: 'bt', icon: <Bluetooth size={18} />, label: 'BT' },
-          { id: 'radio', icon: <Radio size={18} />, label: 'RADIO' }
-        ].map((m) => (
-          <button
-            key={m.id}
-            onClick={() => { setConnMode(m.id); playBeep(1000, 0.05); }}
-            className={`flex flex-col items-center justify-center p-3 rounded-xl border-b-4 transition-all active:scale-95 ${
-              connMode === m.id 
-                ? 'bg-yellow-600 border-yellow-800 text-black' 
-                : 'bg-neutral-900 border-black text-neutral-500'
-            }`}
-          >
-            {m.icon}
-            <span className="text-[9px] font-bold mt-1 uppercase">{m.label}</span>
-          </button>
-        ))}
-      </div>
+        <!-- Branding Aplikasi -->
+        <div class="w-full flex justify-between items-center mt-6 px-2">
+            <div>
+                <h1 class="text-2xl font-black italic tracking-tighter text-emerald-500">SECURE-TALK</h1>
+                <p class="text-[8px] text-emerald-900 font-bold tracking-[0.3em] uppercase italic">Encrypted Android Link</p>
+            </div>
+            
+            <div id="status-badge" class="flex items-center gap-2 border border-neutral-800 bg-neutral-900 px-3 py-1.5 rounded-2xl shadow-lg transition-all duration-300">
+                <div id="status-led" class="w-2 h-2 rounded-full bg-emerald-500"></div>
+                <span id="status-text" class="text-[10px] uppercase font-black tracking-widest">Ready</span>
+            </div>
+        </div>
 
-      {/* Channel Controls */}
-      <div className="w-full max-w-md flex items-center justify-between mt-8 px-4">
-        <button 
-          onClick={() => changeChannel(-1)}
-          className="w-14 h-14 bg-neutral-900 rounded-2xl flex items-center justify-center border-b-4 border-black active:scale-90 transition-all text-yellow-500"
-        >
-          <ChevronDown size={28} />
+        <!-- Layar LCD Utama -->
+        <div class="w-full bg-gradient-to-b from-neutral-900 to-black border-2 border-neutral-800 rounded-3xl p-6 mt-6 shadow-2xl relative overflow-hidden scanline">
+            <!-- Animasi Gelombang Suara -->
+            <div id="visualizer" class="absolute inset-x-0 bottom-0 h-16 opacity-20 flex items-end justify-center gap-1 px-4 pointer-events-none"></div>
+
+            <div class="flex justify-between items-start relative z-10">
+                <div>
+                    <p class="text-[10px] text-emerald-800 font-bold uppercase tracking-widest">Channel</p>
+                    <div class="flex items-baseline gap-1">
+                        <span id="channel-num" class="text-7xl font-mono-digital font-bold text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]">01</span>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-[10px] text-emerald-800 font-bold uppercase tracking-widest">Protocol</p>
+                    <p id="proto-label" class="text-sm font-black text-emerald-400 uppercase">WiFi Direct</p>
+                    <div class="inline-block mt-2 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[8px] font-bold text-emerald-500 uppercase">
+                        Auto-Listen
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 flex items-center justify-between relative z-10 bg-black/40 p-3 rounded-2xl border border-white/5">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="activity" id="activity-icon" class="w-3.5 h-3.5 text-neutral-700"></i>
+                    <span id="activity-status" class="text-[9px] font-mono text-neutral-400 uppercase tracking-tighter">Memonitor Frekuensi...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tombol Simulasi (Uji Coba Fitur RX) -->
+        <button id="sim-btn" class="w-full py-4 mt-6 rounded-2xl border-2 border-blue-500/30 bg-blue-600/10 text-blue-400 flex items-center justify-center gap-3 active:scale-95 transition-all outline-none">
+            <i data-lucide="radio-receiver" class="w-4 h-4"></i>
+            <span class="text-[10px] font-black uppercase tracking-widest">Simulasi Sinyal Masuk (Tes RX)</span>
         </button>
-        <div className="text-center">
-          <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-[0.2em]">Select Channel</p>
-        </div>
-        <button 
-          onClick={() => changeChannel(1)}
-          className="w-14 h-14 bg-neutral-900 rounded-2xl flex items-center justify-center border-b-4 border-black active:scale-90 transition-all text-yellow-500"
-        >
-          <ChevronUp size={28} />
-        </button>
-      </div>
 
-      {/* PTT Button Section */}
-      <div className="flex-1 flex items-center justify-center w-full max-w-md my-8">
-        <div className="relative">
-          {/* Animated rings when talking */}
-          {isTalking && (
-            <>
-              <div className="absolute inset-0 rounded-full bg-red-500/20 animate-ping" />
-              <div className="absolute -inset-4 rounded-full bg-red-500/10 animate-pulse" />
-            </>
-          )}
-          
-          <button
-            onMouseDown={handleStartTalking}
-            onMouseUp={handleStopTalking}
-            onTouchStart={(e) => { e.preventDefault(); handleStartTalking(); }}
-            onTouchEnd={(e) => { e.preventDefault(); handleStopTalking(); }}
-            className={`w-52 h-52 rounded-full flex flex-col items-center justify-center border-[12px] transition-all relative z-10 shadow-2xl active:scale-95 ${
-              isTalking 
-                ? 'bg-red-600 border-red-950 text-red-100' 
-                : 'bg-yellow-600 border-neutral-900 text-yellow-950'
-            }`}
-          >
-            <Mic size={64} className="mb-2" />
-            <span className="font-black text-xs tracking-widest">PUSH TO TALK</span>
-          </button>
+        <!-- Pemilih Mode Koneksi -->
+        <div class="w-full grid grid-cols-3 gap-3 mt-6">
+            <button onclick="setMode('wifi')" id="mode-wifi" class="mode-btn flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-emerald-400 bg-emerald-600 text-black transition-all">
+                <i data-lucide="wifi" class="w-5 h-5"></i>
+                <span class="text-[10px] font-black mt-2">WIFI</span>
+            </button>
+            <button onclick="setMode('bt')" id="mode-bt" class="mode-btn flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-neutral-800 bg-neutral-900 text-neutral-500 transition-all">
+                <i data-lucide="bluetooth" class="w-5 h-5"></i>
+                <span class="text-[10px] font-black mt-2">BT</span>
+            </button>
+            <button onclick="setMode('radio')" id="mode-radio" class="mode-btn flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-neutral-800 bg-neutral-900 text-neutral-500 transition-all">
+                <i data-lucide="radio" class="w-5 h-5"></i>
+                <span class="text-[10px] font-black mt-2">RADIO</span>
+            </button>
         </div>
-      </div>
 
-      {/* Info Footer */}
-      <div className="w-full max-w-md bg-neutral-900/50 border border-neutral-800/50 p-4 rounded-xl mb-6">
-        <div className="flex items-center gap-3 text-neutral-400">
-          <ShieldCheck size={16} className="text-green-600" />
-          <p className="text-[10px] italic leading-tight">{modeInfo.desc}</p>
+        <!-- Kontrol Saluran & Tombol PTT -->
+        <div class="flex-1 w-full flex flex-col items-center justify-center">
+            <div class="flex items-center gap-12 mb-8">
+                <button onclick="changeChannel(-1)" class="w-14 h-14 bg-neutral-900 rounded-full flex items-center justify-center border border-neutral-800 active:bg-emerald-900 text-emerald-500 shadow-lg active:scale-90 transition-transform">
+                    <i data-lucide="chevron-down"></i>
+                </button>
+                <div class="flex flex-col items-center">
+                    <i data-lucide="shield-check" class="text-emerald-500 w-6 h-6"></i>
+                    <p class="text-[9px] text-neutral-500 font-black uppercase tracking-widest mt-1">P2P Secure</p>
+                </div>
+                <button onclick="changeChannel(1)" class="w-14 h-14 bg-neutral-900 rounded-full flex items-center justify-center border border-neutral-800 active:bg-emerald-900 text-emerald-500 shadow-lg active:scale-90 transition-transform">
+                    <i data-lucide="chevron-up"></i>
+                </button>
+            </div>
+
+            <!-- Tombol Utama PTT (Push-To-Talk) -->
+            <div class="relative">
+                <div id="ring-tx" class="absolute -inset-10 rounded-full border-4 border-red-500/20 hidden animate-ping"></div>
+                <div id="ring-rx" class="absolute -inset-10 rounded-full border-4 border-blue-500/20 hidden animate-pulse"></div>
+                
+                <button id="ptt-btn" class="w-48 h-48 rounded-full flex flex-col items-center justify-center border-[14px] border-neutral-950 bg-emerald-600 text-emerald-950 shadow-2xl transition-all relative z-10 active:scale-90 touch-none outline-none overflow-hidden">
+                    <div id="ptt-inner" class="mb-2 p-4 rounded-full bg-emerald-700">
+                        <i data-lucide="mic" class="w-11 h-11"></i>
+                    </div>
+                    <span id="ptt-label" class="font-black text-[11px] tracking-[0.3em] uppercase">Tahan Bicara</span>
+                </button>
+            </div>
+
+            <div class="flex items-center gap-2 mt-8 opacity-30 animate-pulse">
+                <i data-lucide="info" class="w-3 h-3"></i>
+                <span class="text-[10px] font-bold uppercase tracking-widest">Tahan tombol untuk mengirim suara</span>
+            </div>
         </div>
-      </div>
-
-      <div className="text-[9px] text-neutral-700 uppercase font-bold tracking-widest pb-4">
-        V.2.1 Multi-Link Architecture
-      </div>
     </div>
-  );
-};
 
-export default App;
+    <script>
+        // --- State Manajemen ---
+        let state = {
+            channel: 1,
+            isTalking: false,
+            isReceiving: false,
+            mode: 'wifi'
+        };
+
+        // --- Sistem Audio (Web Audio API) ---
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playBeep(freq, duration, vol = 0.05) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        // --- Haptic Feedback (Getaran Android) ---
+        function triggerHaptic(pattern) {
+            if (navigator.vibrate) {
+                navigator.vibrate(pattern);
+            }
+        }
+
+        // --- Logika Update UI ---
+        function updateUI() {
+            document.getElementById('channel-num').innerText = state.channel.toString().padStart(2, '0');
+            
+            // Mode Buttons
+            document.querySelectorAll('.mode-btn').forEach(b => {
+                b.className = "mode-btn flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-neutral-800 bg-neutral-900 text-neutral-500 transition-all";
+            });
+            const activeBtn = document.getElementById('mode-' + state.mode);
+            activeBtn.className = "mode-btn flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-emerald-400 bg-emerald-600 text-black shadow-lg shadow-emerald-500/20 scale-105 transition-all";
+            
+            document.getElementById('proto-label').innerText = 
+                state.mode === 'wifi' ? 'WiFi Direct' : state.mode === 'bt' ? 'BT Mesh' : 'RF UHF/VHF';
+
+            const ptt = document.getElementById('ptt-btn');
+            const pttInner = document.getElementById('ptt-inner');
+            const pttLabel = document.getElementById('ptt-label');
+            const badge = document.getElementById('status-badge');
+            const led = document.getElementById('status-led');
+            const txt = document.getElementById('status-text');
+            const ringTx = document.getElementById('ring-tx');
+            const ringRx = document.getElementById('ring-rx');
+            const actIcon = document.getElementById('activity-icon');
+            const actStat = document.getElementById('activity-status');
+
+            if (state.isTalking) {
+                ptt.className = "w-48 h-48 rounded-full flex flex-col items-center justify-center border-[14px] border-black bg-red-600 text-white shadow-2xl transition-all relative z-10 scale-95";
+                pttInner.className = "mb-2 p-4 rounded-full bg-red-700";
+                pttLabel.innerText = "Transmitting";
+                badge.className = "flex items-center gap-2 border border-red-500 bg-red-950/30 px-3 py-1.5 rounded-2xl shadow-lg";
+                led.className = "w-2 h-2 rounded-full bg-red-500 animate-pulse";
+                txt.innerText = "TX";
+                ringTx.classList.remove('hidden');
+                ringRx.classList.add('hidden');
+                actIcon.className = "w-3.5 h-3.5 text-red-500 animate-pulse";
+                actStat.innerText = "Mengirim Suara (Terenskripsi)...";
+            } else if (state.isReceiving) {
+                ptt.className = "w-48 h-48 rounded-full flex flex-col items-center justify-center border-[14px] border-blue-500 bg-blue-900 text-blue-200 opacity-60 transition-all relative z-10 pointer-events-none";
+                pttInner.className = "mb-2 p-4 rounded-full bg-blue-800";
+                pttLabel.innerText = "Menerima";
+                badge.className = "flex items-center gap-2 border border-blue-500 bg-blue-950/30 px-3 py-1.5 rounded-2xl shadow-lg";
+                led.className = "w-2 h-2 rounded-full bg-blue-500 animate-bounce";
+                txt.innerText = "RX";
+                ringRx.classList.remove('hidden');
+                ringTx.classList.add('hidden');
+                actIcon.className = "w-3.5 h-3.5 text-blue-500 animate-pulse";
+                actStat.innerText = "Sinyal Terdeteksi: Mendengarkan...";
+            } else {
+                ptt.className = "w-48 h-48 rounded-full flex flex-col items-center justify-center border-[14px] border-neutral-950 bg-emerald-600 text-emerald-950 shadow-2xl transition-all relative z-10 active:scale-90 touch-none";
+                pttInner.className = "mb-2 p-4 rounded-full bg-emerald-700";
+                pttLabel.innerText = "Tahan Bicara";
+                badge.className = "flex items-center gap-2 border border-neutral-800 bg-neutral-900 px-3 py-1.5 rounded-2xl shadow-lg";
+                led.className = "w-2 h-2 rounded-full bg-emerald-500";
+                txt.innerText = "Ready";
+                ringTx.classList.add('hidden');
+                ringRx.classList.add('hidden');
+                actIcon.className = "w-3.5 h-3.5 text-neutral-700";
+                actStat.innerText = "Memonitor Frekuensi...";
+            }
+        }
+
+        // --- Event Handlers ---
+        window.setMode = (m) => {
+            initAudio();
+            state.mode = m;
+            triggerHaptic(20);
+            playBeep(1000, 0.05);
+            updateUI();
+        };
+
+        window.changeChannel = (v) => {
+            initAudio();
+            state.channel += v;
+            if (state.channel > 16) state.channel = 1;
+            if (state.channel < 1) state.channel = 16;
+            triggerHaptic(10);
+            playBeep(1200, 0.05);
+            updateUI();
+        };
+
+        const pttBtn = document.getElementById('ptt-btn');
+        function startTalking(e) {
+            if (state.isReceiving) return;
+            initAudio();
+            state.isTalking = true;
+            triggerHaptic(50); // Getar pendek saat mulai bicara
+            playBeep(880, 0.08); // Nada tinggi mulai
+            updateUI();
+        }
+
+        function stopTalking() {
+            if (!state.isTalking) return;
+            state.isTalking = false;
+            triggerHaptic([30, 50, 30]); // Getar pola roger beep
+            playBeep(440, 0.12); // Nada rendah berhenti
+            updateUI();
+        }
+
+        // Pointer Events: Solusi terbaik untuk layar sentuh Android (tanpa delay)
+        pttBtn.addEventListener('pointerdown', startTalking);
+        window.addEventListener('pointerup', stopTalking);
+        window.addEventListener('pointercancel', stopTalking); // Jika interupsi layar (notif dsb)
+
+        // Simulator Sinyal Masuk
+        document.getElementById('sim-btn').addEventListener('click', () => {
+            if (state.isTalking || state.isReceiving) return;
+            initAudio();
+            state.isReceiving = true;
+            triggerHaptic(100); // Getar panjang saat ada sinyal masuk
+            playBeep(660, 0.05, 0.02);
+            updateUI();
+            setTimeout(() => {
+                state.isReceiving = false;
+                triggerHaptic(40);
+                playBeep(440, 0.1, 0.02);
+                updateUI();
+            }, 3000);
+        });
+
+        // --- Visualizer Bar Animasi ---
+        const visualizer = document.getElementById('visualizer');
+        const barCount = 24;
+        for (let i = 0; i < barCount; i++) {
+            const bar = document.createElement('div');
+            bar.className = "w-1 rounded-t-full transition-all duration-150 bg-emerald-900 h-1";
+            visualizer.appendChild(bar);
+        }
+
+        setInterval(() => {
+            const bars = visualizer.querySelectorAll('div');
+            bars.forEach(bar => {
+                if (state.isTalking) {
+                    bar.style.height = (Math.random() * 80 + 20) + '%';
+                    bar.style.backgroundColor = '#ef4444'; // Merah saat TX
+                } else if (state.isReceiving) {
+                    bar.style.height = (Math.random() * 80 + 20) + '%';
+                    bar.style.backgroundColor = '#3b82f6'; // Biru saat RX
+                } else {
+                    bar.style.height = '4px';
+                    bar.style.backgroundColor = '#064e3b'; // Hijau redup saat stand-by
+                }
+            });
+        }, 120);
+
+        // --- Update Jam Real-time ---
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').innerText = 
+                now.getHours().toString().padStart(2, '0') + ":" + 
+                now.getMinutes().toString().padStart(2, '0');
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Inisialisasi Ikon Lucide
+        lucide.createIcons();
+    </script>
+</body>
+</html>
