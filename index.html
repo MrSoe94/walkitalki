@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radio-Talkie Offline Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .ptt-button {
+            transition: all 0.2s ease;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ptt-active {
+            transform: scale(0.95);
+            background-color: #ef4444 !important;
+            box-shadow: 0 0 40px rgba(239, 68, 68, 0.7);
+            border-color: #7f1d1d !important;
+        }
+        .wave-bar {
+            width: 4px;
+            background-color: #eab308;
+            border-radius: 2px;
+            display: none;
+        }
+        .ptt-active .wave-bar {
+            display: block;
+        }
+        @keyframes wave-anim {
+            0%, 100% { height: 10px; }
+            50% { height: 40px; }
+        }
+        .channel-display {
+            font-family: 'Courier New', Courier, monospace;
+            text-shadow: 0 0 10px rgba(234, 179, 8, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-gray-950 text-white flex flex-col items-center justify-between min-h-screen p-6 font-sans overflow-hidden">
+
+    <!-- Header & Status -->
+    <div class="w-full max-w-md">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-black tracking-tighter text-yellow-500 italic">PRO-TALKIE</h1>
+            <div class="flex items-center gap-2 bg-gray-900 px-3 py-1 rounded-full border border-gray-800">
+                <div id="status-led" class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Live</span>
+            </div>
+        </div>
+
+        <!-- Dashboard Screen -->
+        <div class="bg-black rounded-xl p-4 border-2 border-gray-800 shadow-inner relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none" style="background-image: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 2px, 3px 100%;"></div>
+            
+            <div class="flex justify-between items-start mb-2">
+                <div>
+                    <p class="text-[10px] text-yellow-700 font-bold uppercase">Saluran Aktif</p>
+                    <div class="flex items-baseline gap-1">
+                        <span class="text-4xl font-bold text-yellow-500 channel-display" id="channel-num">01</span>
+                        <span class="text-sm text-yellow-800 font-bold">CH</span>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-[10px] text-yellow-700 font-bold uppercase">Mode</p>
+                    <p class="text-xs text-yellow-500 font-mono" id="status-text">SIAGA</p>
+                </div>
+            </div>
+
+            <!-- Signal Strength Bars -->
+            <div class="flex gap-0.5 items-end h-4 mt-2">
+                <div class="w-2 h-1 bg-yellow-500"></div>
+                <div class="w-2 h-2 bg-yellow-500"></div>
+                <div class="w-2 h-3 bg-yellow-500"></div>
+                <div class="w-2 h-4 bg-yellow-500"></div>
+                <div class="w-2 h-2 bg-gray-800"></div>
+                <span class="text-[8px] ml-2 text-yellow-900 font-bold">SIG-STRENGTH</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Central Control: Channel Switcher -->
+    <div class="w-full max-w-md flex flex-col items-center">
+        <div class="flex items-center gap-6 mb-8 bg-gray-900 p-2 rounded-2xl border border-gray-800">
+            <button id="chan-down" class="w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center hover:bg-gray-700 active:scale-90 transition-all border-b-4 border-black">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M20 12H4" /></svg>
+            </button>
+            <div class="text-center px-4">
+                <p class="text-[10px] text-gray-500 font-bold uppercase">Ganti Saluran</p>
+            </div>
+            <button id="chan-up" class="w-12 h-12 rounded-xl bg-gray-800 flex items-center justify-center hover:bg-gray-700 active:scale-90 transition-all border-b-4 border-black">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4" /></svg>
+            </button>
+        </div>
+
+        <!-- Visualizer Area -->
+        <div id="visualizer" class="flex items-center gap-1.5 h-12 mb-4">
+            <div class="wave-bar" style="animation: wave-anim 0.4s infinite"></div>
+            <div class="wave-bar" style="animation: wave-anim 0.7s infinite"></div>
+            <div class="wave-bar" style="animation: wave-anim 0.5s infinite"></div>
+            <div class="wave-bar" style="animation: wave-anim 0.9s infinite"></div>
+            <div class="wave-bar" style="animation: wave-anim 0.6s infinite"></div>
+        </div>
+        
+        <!-- PTT Button -->
+        <button id="ptt-btn" class="ptt-button w-56 h-56 rounded-full bg-yellow-600 border-[12px] border-gray-900 flex flex-col items-center justify-center shadow-2xl relative">
+            <div class="absolute inset-0 rounded-full border-4 border-yellow-500 opacity-20"></div>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-24 h-24 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+            </svg>
+            <span class="text-xs font-black tracking-widest text-yellow-900">PUSH TO TALK</span>
+        </button>
+    </div>
+
+    <!-- Bottom Specs -->
+    <div class="w-full max-w-md grid grid-cols-2 gap-4 mb-8">
+        <div class="bg-gray-900/50 p-3 rounded-lg border border-gray-800 flex justify-between items-center">
+            <span class="text-[10px] text-gray-500 uppercase font-bold">Enkripsi</span>
+            <span class="text-xs font-mono text-green-500">AES-256</span>
+        </div>
+        <div class="bg-gray-900/50 p-3 rounded-lg border border-gray-800 flex justify-between items-center">
+            <span class="text-[10px] text-gray-500 uppercase font-bold">Baterai</span>
+            <span class="text-xs font-mono text-yellow-500">88%</span>
+        </div>
+    </div>
+
+    <script>
+        const pttBtn = document.getElementById('ptt-btn');
+        const statusText = document.getElementById('status-text');
+        const statusLed = document.getElementById('status-led');
+        const channelNumDisplay = document.getElementById('channel-num');
+        const btnUp = document.getElementById('chan-up');
+        const btnDown = document.getElementById('chan-down');
+        
+        let currentChannel = 1;
+        let mediaRecorder;
+        let audioChunks = [];
+
+        // Update Tampilan Saluran
+        function updateChannel(val) {
+            currentChannel += val;
+            if (currentChannel > 16) currentChannel = 1;
+            if (currentChannel < 1) currentChannel = 16;
+            
+            channelNumDisplay.innerText = currentChannel.toString().padStart(2, '0');
+            
+            // Efek suara klik ganti saluran
+            playBeep(1200, 0.05);
+        }
+
+        btnUp.onclick = () => updateChannel(1);
+        btnDown.onclick = () => updateChannel(-1);
+
+        // Suara Beep
+        function playBeep(freq, duration) {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        // Inisialisasi Mikrofon
+        async function initMic() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    console.log(`Audio di Saluran ${currentChannel} siap dikirim`);
+                    audioChunks = [];
+                };
+            } catch (err) {
+                console.error("Mic Error:", err);
+            }
+        }
+
+        initMic();
+
+        // Push To Talk Logic
+        const startTalking = (e) => {
+            if (e.cancelable) e.preventDefault();
+            if (mediaRecorder && mediaRecorder.state === "inactive") {
+                pttBtn.classList.add('ptt-active');
+                statusLed.classList.replace('bg-green-500', 'bg-red-500');
+                statusText.innerText = "TX (BICARA)";
+                
+                mediaRecorder.start();
+                playBeep(880, 0.1); // Beep masuk
+            }
+        };
+
+        const stopTalking = (e) => {
+            if (e.cancelable) e.preventDefault();
+            if (mediaRecorder && mediaRecorder.state === "recording") {
+                pttBtn.classList.remove('ptt-active');
+                statusLed.classList.replace('bg-red-500', 'bg-green-500');
+                statusText.innerText = "SIAGA";
+                
+                mediaRecorder.stop();
+                playBeep(440, 0.15); // Beep keluar (Roger)
+            }
+        };
+
+        // Event Listeners
+        pttBtn.addEventListener('mousedown', startTalking);
+        window.addEventListener('mouseup', stopTalking);
+        pttBtn.addEventListener('touchstart', startTalking);
+        window.addEventListener('touchend', stopTalking);
+
+    </script>
+</body>
+</html>
