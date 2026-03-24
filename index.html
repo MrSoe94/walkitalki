@@ -1,399 +1,920 @@
 <!DOCTYPE html>
 <html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>SECURE-TALK P2P</title>
-    <!-- Tailwind CSS untuk styling cepat dan modern -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons untuk ikon vektor yang tajam -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Secure-Talk</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&display=swap');
-        
-        :root {
-            --emerald-glow: 0 0 15px rgba(52, 211, 153, 0.3);
-        }
+      :root {
+        --bg: #0b141a;
+        --text: #e9edef;
+        --accent: #00a884;
+        --accent-dark: #005c4b;
+        --neutral-900: #111b21;
+        --neutral-800: #222e35;
+        --neutral-700: #2a3942;
+        --neutral-500: #8696a0;
+        --blue: #34b7f1;
+        --red: #ef4444;
+        --shadow-emerald: 0 0 10px rgba(0, 168, 132, 0.35);
+      }
 
-        body {
-            background-color: #000;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: none; /* Mencegah pull-to-refresh dan scroll browser */
-        }
+      * { box-sizing: border-box; }
+      html, body {
+        height: 100%;
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      }
+      body { display: flex; justify-content: center; min-height: 100dvh; }
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image: url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png");
+        background-size: auto;
+        background-repeat: repeat;
+        opacity: 0.2;
+        pointer-events: none;
+        z-index: 0;
+      }
 
-        .font-mono-digital {
-            font-family: 'JetBrains+Mono', monospace;
-        }
+      #login-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 50;
+      }
+      #login-overlay.hidden { display: none; }
+      .login-box {
+        width: 320px;
+        background: var(--neutral-900);
+        border: 1px solid var(--neutral-800);
+        border-radius: 10px;
+        padding: 24px;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      }
+      .login-box h2 {
+        margin: 0 0 10px;
+        font-size: 18px;
+        color: var(--text);
+      }
+      .login-box p {
+        margin: 0 0 16px;
+        font-size: 12px;
+        color: var(--neutral-500);
+      }
+      .login-input {
+        width: 100%;
+        padding: 10px 12px;
+        margin: 6px 0;
+        background: var(--neutral-700);
+        border: 1px solid var(--neutral-800);
+        color: var(--text);
+        border-radius: 6px;
+        outline: none;
+      }
+      .login-btn {
+        width: 100%;
+        padding: 10px 12px;
+        margin-top: 10px;
+        background: var(--accent);
+        color: #000;
+        font-weight: 800;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
 
-        /* Efek garis-garis layar retro (Scanline) */
-        .scanline::after {
-            content: " ";
-            display: block;
-            position: absolute;
-            top: 0; left: 0; bottom: 0; right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
-                        linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
-            z-index: 2;
-            background-size: 100% 2px, 3px 100%;
-            pointer-events: none;
-        }
+      .app {
+        width: 100%;
+        max-width: 480px;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        overflow: hidden;
+        touch-action: none;
+        user-select: none;
+        position: relative;
+        z-index: 1;
+        padding-bottom: 12px;
+      }
 
-        /* Tinggi dinamis untuk layar Android agar tidak terpotong bar navigasi browser */
-        .full-height {
-            height: 100vh;
-            height: 100dvh;
-        }
+      .status-bar {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 24px 8px;
+        opacity: 0.6;
+        font-weight: 700;
+        font-size: 12px;
+      }
+      .status-icons { display: flex; gap: 8px; align-items: center; }
 
-        /* Menghilangkan kotak biru saat tombol di tap pada Android */
-        * {
-            -webkit-tap-highlight-color: transparent;
-            outline: none !important;
-        }
+      .privacy {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        margin-top: 6px;
+        background: rgba(32, 44, 51, 0.9);
+        border-top-left-radius: 24px;
+        border-top-right-radius: 24px;
+        border-left: 1px solid var(--neutral-800);
+        border-right: 1px solid var(--neutral-800);
+        border-top: 1px solid var(--neutral-800);
+      }
+      .privacy-left { display: flex; gap: 8px; align-items: center; }
+      .privacy-right { display: flex; gap: 16px; align-items: center; }
+      .tiny-label { font-size: 9px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; color: var(--neutral-500); }
+      .tiny-label-green { color: var(--accent); }
 
-        .active-pulse {
-            animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
+      .main {
+        flex: 1;
+        width: 100%;
+        padding: 0 14px 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        overflow-y: auto;
+      }
 
-        @keyframes pulse-ring {
-            0%, 100% { opacity: 1; }
-            50% { opacity: .5; }
-        }
+      .header {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 8px;
+        margin-top: 18px;
+      }
+      .room-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 4px;
+        font-size: 10px;
+        color: var(--neutral-500);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      }
+      .room-badge {
+        padding: 2px 6px;
+        border-radius: 6px;
+        border: 1px solid var(--neutral-800);
+        background: rgba(0, 0, 0, 0.2);
+        color: var(--neutral-500);
+        font-weight: 700;
+      }
+      .room-badge.online {
+        color: var(--accent);
+        border-color: rgba(0, 168, 132, 0.35);
+        box-shadow: 0 0 6px rgba(0, 168, 132, 0.3);
+      }
+      .title {
+        font-size: 22px;
+        font-weight: 900;
+        font-style: italic;
+        letter-spacing: -0.03em;
+        color: var(--accent);
+      }
+      .subtitle {
+        font-size: 8px;
+        font-weight: 800;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        color: var(--neutral-500);
+        font-style: italic;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid var(--neutral-800);
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 10px;
+        text-transform: uppercase;
+        font-weight: 900;
+        letter-spacing: 0.2em;
+        transition: all 0.3s ease;
+        background: var(--neutral-900);
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
+      }
+      .pill.tx { border-color: var(--red); background: rgba(127, 29, 29, 0.3); }
+      .pill.rx { border-color: var(--accent); background: rgba(0, 168, 132, 0.25); }
+      .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+      .dot.tx { background: var(--red); animation: pulse 1.2s infinite; }
+      .dot.rx { background: var(--accent); animation: bounce 1.2s infinite; }
+
+      .display {
+        width: 100%;
+        background: linear-gradient(180deg, #202c33 0%, #111b21 100%);
+        border: 2px solid var(--neutral-800);
+        border-radius: 24px;
+        padding: 22px;
+        margin-top: 20px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      }
+      .equalizer {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 64px;
+        display: flex;
+        justify-content: center;
+        align-items: flex-end;
+        gap: 4px;
+        opacity: 0.2;
+        padding: 0 16px 10px;
+        pointer-events: none;
+      }
+      .bar {
+        width: 4px;
+        height: 4px;
+        border-radius: 999px 999px 0 0;
+        background: var(--accent-dark);
+        transition: height 0.15s ease;
+      }
+      .display-top {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+      }
+      .label {
+        font-size: 10px;
+        color: var(--neutral-500);
+        font-weight: 800;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+      }
+      .channel {
+        font-size: clamp(44px, 10vw, 64px);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-weight: 900;
+        color: #7ff0d6;
+        text-shadow: var(--shadow-emerald);
+      }
+      .protocol {
+        text-align: right;
+      }
+      .protocol .mode {
+        font-size: 12px;
+        font-weight: 900;
+        color: #7ff0d6;
+      }
+      .badge {
+        display: inline-block;
+        margin-top: 6px;
+        padding: 2px 8px;
+        border-radius: 8px;
+        border: 1px solid rgba(0, 168, 132, 0.25);
+        background: rgba(0, 168, 132, 0.12);
+        font-size: 8px;
+        font-weight: 800;
+        color: var(--accent);
+        letter-spacing: 0.1em;
+      }
+      .status-strip {
+        margin-top: 24px;
+        background: rgba(17, 27, 33, 0.8);
+        border: 1px solid var(--neutral-800);
+        border-radius: 16px;
+        padding: 10px 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        position: relative;
+        z-index: 2;
+      }
+      .status-text {
+        font-size: 9px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .btn {
+        border: 2px solid var(--neutral-800);
+        background: #111b21;
+        color: var(--neutral-500);
+        border-radius: 16px;
+        padding: 12px 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        font-size: 10px;
+        font-weight: 900;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        transition: transform 0.1s ease, opacity 0.2s ease, background 0.2s ease, border 0.2s ease;
+      }
+      .btn:active { transform: scale(0.98); }
+      .btn.primary {
+        border-color: rgba(0, 168, 132, 0.35);
+        color: var(--accent);
+        background: rgba(0, 168, 132, 0.12);
+        box-shadow: 0 12px 24px rgba(0, 168, 132, 0.15);
+      }
+      .btn.disabled { opacity: 0.3; pointer-events: none; }
+
+      .conn-grid {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-top: 20px;
+      }
+      .conn-btn {
+        padding: 12px 6px;
+        border-radius: 16px;
+        border: 2px solid var(--neutral-800);
+        background: #111b21;
+        color: var(--neutral-500);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        font-size: 10px;
+        font-weight: 900;
+        text-transform: uppercase;
+        transition: all 0.2s ease;
+      }
+      .conn-btn.active {
+        background: var(--accent);
+        border-color: #46c7ab;
+        color: #000;
+        box-shadow: 0 10px 24px rgba(0, 168, 132, 0.25);
+      }
+
+      .channel-controls {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 36px;
+        margin-top: 28px;
+      }
+      .circle-btn {
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        border: 1px solid var(--neutral-800);
+        background: var(--neutral-900);
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.5);
+      }
+      .circle-btn:active { background: var(--accent-dark); }
+
+      .ptt-wrap { margin: 28px 0 16px; position: relative; }
+      .ring {
+        position: absolute;
+        inset: -40px;
+        border-radius: 999px;
+        border: 4px solid rgba(239, 68, 68, 0.2);
+        animation: ping 1.5s infinite;
+        display: none;
+      }
+      .ring.rx {
+        border-color: rgba(0, 168, 132, 0.25);
+        animation: pulse 1.2s infinite;
+      }
+      .ring.show { display: block; }
+
+      .ptt {
+        width: clamp(150px, 42vw, 192px);
+        height: clamp(150px, 42vw, 192px);
+        border-radius: 50%;
+        border: 14px solid #0b0b0b;
+        background: var(--accent);
+        color: #073b30;
+        font-weight: 900;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+        transition: transform 0.1s ease, background 0.2s ease, border 0.2s ease, color 0.2s ease;
+      }
+      .ptt:active { transform: scale(0.95); }
+      .ptt.tx { background: var(--red); border-color: #000; color: #fff; }
+      .ptt.rx { background: #22323a; border-color: #2c4a51; color: #cfeee7; opacity: 0.8; }
+      .ptt-icon {
+        padding: 16px;
+        border-radius: 50%;
+        background: var(--accent-dark);
+      }
+      .ptt.tx .ptt-icon { background: #b91c1c; }
+      .ptt.rx .ptt-icon { background: #2c4a51; }
+
+      .help {
+        margin-top: 12px;
+        opacity: 0.4;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+      }
+
+      @media (min-width: 640px) {
+        .app { max-width: 560px; }
+        .main { padding: 0 20px 28px; }
+        .display { padding: 26px; border-radius: 26px; }
+        .channel-controls { gap: 48px; }
+        .circle-btn { width: 58px; height: 58px; }
+        .btn { padding: 14px 18px; font-size: 11px; }
+      }
+
+      @media (max-width: 360px) {
+        .status-bar { padding: 12px 16px 6px; }
+        .privacy { padding: 10px 12px; }
+        .display { padding: 18px; }
+        .conn-grid { gap: 8px; }
+        .conn-btn { padding: 10px 4px; font-size: 9px; }
+        .channel-controls { gap: 26px; }
+        .circle-btn { width: 46px; height: 46px; }
+        .btn { padding: 10px 12px; letter-spacing: 0.15em; }
+      }
+
+      @keyframes pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.6; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+      @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-4px); }
+      }
+      @keyframes ping {
+        0% { transform: scale(0.9); opacity: 0.8; }
+        100% { transform: scale(1.2); opacity: 0; }
+      }
     </style>
-</head>
-<body class="text-white flex justify-center items-start overflow-hidden">
-
-    <div id="app" class="w-full max-w-md flex flex-col items-center full-height p-4 pt-safe">
-        
-        <!-- Bar Status Mockup (Jam & Sinyal) -->
-        <div class="w-full flex justify-between items-center px-4 py-2 opacity-40">
-            <span id="clock" class="text-xs font-bold font-mono">00:00</span>
-            <div class="flex gap-2 items-center">
-                <i data-lucide="signal" class="w-3 h-3 text-emerald-500"></i>
-                <i data-lucide="wifi" class="w-3 h-3"></i>
-                <i data-lucide="battery" class="w-3 h-3"></i>
-            </div>
-        </div>
-
-        <!-- Panel Privasi Atas -->
-        <div class="w-full flex justify-between items-center px-4 py-3 mt-2 bg-neutral-900/30 rounded-t-3xl border-x border-t border-neutral-800">
-            <div class="flex gap-2 items-center">
-                <i data-lucide="server-off" class="w-3.5 h-3.5 text-red-500"></i>
-                <span class="text-[9px] font-bold text-neutral-400 tracking-widest uppercase">P2P No Cloud</span>
-            </div>
-            <div class="flex items-center gap-4">
-                <div class="flex gap-1 items-center">
-                    <i data-lucide="zap" class="w-3 h-3 text-yellow-500"></i>
-                    <span class="text-[8px] font-bold text-neutral-400 uppercase">Auto-RX</span>
-                </div>
-                <div class="flex gap-1 items-center">
-                    <i data-lucide="lock" class="w-3 h-3 text-emerald-500"></i>
-                    <span class="text-[8px] font-bold text-emerald-500 uppercase">Secure</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Branding Aplikasi -->
-        <div class="w-full flex justify-between items-center mt-6 px-2">
-            <div>
-                <h1 class="text-2xl font-black italic tracking-tighter text-emerald-500">SECURE-TALK</h1>
-                <p class="text-[8px] text-emerald-900 font-bold tracking-[0.3em] uppercase italic">Encrypted Android Link</p>
-            </div>
-            
-            <div id="status-badge" class="flex items-center gap-2 border border-neutral-800 bg-neutral-900 px-3 py-1.5 rounded-2xl shadow-lg transition-all duration-300">
-                <div id="status-led" class="w-2 h-2 rounded-full bg-emerald-500"></div>
-                <span id="status-text" class="text-[10px] uppercase font-black tracking-widest">Ready</span>
-            </div>
-        </div>
-
-        <!-- Layar LCD Utama -->
-        <div class="w-full bg-gradient-to-b from-neutral-900 to-black border-2 border-neutral-800 rounded-3xl p-6 mt-6 shadow-2xl relative overflow-hidden scanline">
-            <!-- Animasi Gelombang Suara -->
-            <div id="visualizer" class="absolute inset-x-0 bottom-0 h-16 opacity-20 flex items-end justify-center gap-1 px-4 pointer-events-none"></div>
-
-            <div class="flex justify-between items-start relative z-10">
-                <div>
-                    <p class="text-[10px] text-emerald-800 font-bold uppercase tracking-widest">Channel</p>
-                    <div class="flex items-baseline gap-1">
-                        <span id="channel-num" class="text-7xl font-mono-digital font-bold text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]">01</span>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <p class="text-[10px] text-emerald-800 font-bold uppercase tracking-widest">Protocol</p>
-                    <p id="proto-label" class="text-sm font-black text-emerald-400 uppercase">WiFi Direct</p>
-                    <div class="inline-block mt-2 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[8px] font-bold text-emerald-500 uppercase">
-                        Auto-Listen
-                    </div>
-                </div>
-            </div>
-
-            <div class="mt-8 flex items-center justify-between relative z-10 bg-black/40 p-3 rounded-2xl border border-white/5">
-                <div class="flex items-center gap-3">
-                    <i data-lucide="activity" id="activity-icon" class="w-3.5 h-3.5 text-neutral-700"></i>
-                    <span id="activity-status" class="text-[9px] font-mono text-neutral-400 uppercase tracking-tighter">Memonitor Frekuensi...</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tombol Simulasi (Uji Coba Fitur RX) -->
-        <button id="sim-btn" class="w-full py-4 mt-6 rounded-2xl border-2 border-blue-500/30 bg-blue-600/10 text-blue-400 flex items-center justify-center gap-3 active:scale-95 transition-all outline-none">
-            <i data-lucide="radio-receiver" class="w-4 h-4"></i>
-            <span class="text-[10px] font-black uppercase tracking-widest">Simulasi Sinyal Masuk (Tes RX)</span>
-        </button>
-
-        <!-- Pemilih Mode Koneksi -->
-        <div class="w-full grid grid-cols-3 gap-3 mt-6">
-            <button onclick="setMode('wifi')" id="mode-wifi" class="mode-btn flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-emerald-400 bg-emerald-600 text-black transition-all">
-                <i data-lucide="wifi" class="w-5 h-5"></i>
-                <span class="text-[10px] font-black mt-2">WIFI</span>
-            </button>
-            <button onclick="setMode('bt')" id="mode-bt" class="mode-btn flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-neutral-800 bg-neutral-900 text-neutral-500 transition-all">
-                <i data-lucide="bluetooth" class="w-5 h-5"></i>
-                <span class="text-[10px] font-black mt-2">BT</span>
-            </button>
-            <button onclick="setMode('radio')" id="mode-radio" class="mode-btn flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-neutral-800 bg-neutral-900 text-neutral-500 transition-all">
-                <i data-lucide="radio" class="w-5 h-5"></i>
-                <span class="text-[10px] font-black mt-2">RADIO</span>
-            </button>
-        </div>
-
-        <!-- Kontrol Saluran & Tombol PTT -->
-        <div class="flex-1 w-full flex flex-col items-center justify-center">
-            <div class="flex items-center gap-12 mb-8">
-                <button onclick="changeChannel(-1)" class="w-14 h-14 bg-neutral-900 rounded-full flex items-center justify-center border border-neutral-800 active:bg-emerald-900 text-emerald-500 shadow-lg active:scale-90 transition-transform">
-                    <i data-lucide="chevron-down"></i>
-                </button>
-                <div class="flex flex-col items-center">
-                    <i data-lucide="shield-check" class="text-emerald-500 w-6 h-6"></i>
-                    <p class="text-[9px] text-neutral-500 font-black uppercase tracking-widest mt-1">P2P Secure</p>
-                </div>
-                <button onclick="changeChannel(1)" class="w-14 h-14 bg-neutral-900 rounded-full flex items-center justify-center border border-neutral-800 active:bg-emerald-900 text-emerald-500 shadow-lg active:scale-90 transition-transform">
-                    <i data-lucide="chevron-up"></i>
-                </button>
-            </div>
-
-            <!-- Tombol Utama PTT (Push-To-Talk) -->
-            <div class="relative">
-                <div id="ring-tx" class="absolute -inset-10 rounded-full border-4 border-red-500/20 hidden animate-ping"></div>
-                <div id="ring-rx" class="absolute -inset-10 rounded-full border-4 border-blue-500/20 hidden animate-pulse"></div>
-                
-                <button id="ptt-btn" class="w-48 h-48 rounded-full flex flex-col items-center justify-center border-[14px] border-neutral-950 bg-emerald-600 text-emerald-950 shadow-2xl transition-all relative z-10 active:scale-90 touch-none outline-none overflow-hidden">
-                    <div id="ptt-inner" class="mb-2 p-4 rounded-full bg-emerald-700">
-                        <i data-lucide="mic" class="w-11 h-11"></i>
-                    </div>
-                    <span id="ptt-label" class="font-black text-[11px] tracking-[0.3em] uppercase">Tahan Bicara</span>
-                </button>
-            </div>
-
-            <div class="flex items-center gap-2 mt-8 opacity-30 animate-pulse">
-                <i data-lucide="info" class="w-3 h-3"></i>
-                <span class="text-[10px] font-bold uppercase tracking-widest">Tahan tombol untuk mengirim suara</span>
-            </div>
-        </div>
+  </head>
+  <body>
+    <div id="login-overlay">
+      <div class="login-box">
+        <h2>P2P Room</h2>
+        <p>Masukkan nama dan Room ID untuk terhubung</p>
+        <input id="usernameInput" class="login-input" type="text" placeholder="Nama" maxlength="16" />
+        <input id="roomInput" class="login-input" type="text" placeholder="Room ID" maxlength="10" />
+        <button id="joinBtn" class="login-btn">Join</button>
+      </div>
     </div>
 
+    <div class="app" id="app">
+      <div class="status-bar">
+        <span>09:41</span>
+        <div class="status-icons">
+          <i data-lucide="signal"></i>
+          <i data-lucide="wifi"></i>
+          <i data-lucide="battery"></i>
+        </div>
+      </div>
+
+      <div class="privacy">
+        <div class="privacy-left">
+          <i data-lucide="server-off" style="color:#ef4444"></i>
+          <span class="tiny-label">P2P No Cloud</span>
+        </div>
+        <div class="privacy-right">
+          <div style="display:flex; gap:6px; align-items:center;">
+            <i id="autoRxIcon" data-lucide="zap" style="color:#eab308"></i>
+            <span class="tiny-label">Auto-RX</span>
+          </div>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <i data-lucide="lock" style="color:var(--accent)"></i>
+            <span class="tiny-label tiny-label-green">Secure</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="main">
+        <div class="header">
+          <div>
+            <div class="title">SECURE-TALK</div>
+            <div class="subtitle">Encrypted Android Link</div>
+            <div class="room-row">
+              <span>Room:</span>
+              <span id="roomIdDisplay">---</span>
+              <span id="connBadge" class="room-badge">Offline</span>
+            </div>
+          </div>
+          <div class="pill" id="statusPill">
+            <div class="dot" id="statusDot"></div>
+            <span id="statusText">Ready</span>
+          </div>
+        </div>
+
+        <div class="display">
+          <div class="equalizer" id="equalizer"></div>
+          <div class="display-top">
+            <div>
+              <div class="label">Current Channel</div>
+              <div class="channel" id="channelValue">01</div>
+            </div>
+            <div class="protocol">
+              <div class="label">Protocol</div>
+              <div class="mode" id="modeLabel">WIFI DIRECT</div>
+              <div class="badge">LOW LATENCY</div>
+            </div>
+          </div>
+          <div class="status-strip">
+            <i id="activityIcon" data-lucide="activity" style="color:var(--accent-dark)"></i>
+            <div class="status-text" id="activityText">Ready to receive</div>
+          </div>
+        </div>
+
+        <button class="btn primary" id="simulateBtn">
+          <i data-lucide="radio-receiver"></i>
+          <span>Tes Sinyal Masuk</span>
+        </button>
+
+        <div class="conn-grid">
+          <button class="conn-btn" data-mode="wifi">
+            <i data-lucide="wifi"></i>
+            <span>wifi</span>
+          </button>
+          <button class="conn-btn" data-mode="bt">
+            <i data-lucide="bluetooth"></i>
+            <span>bt</span>
+          </button>
+          <button class="conn-btn" data-mode="radio">
+            <i data-lucide="radio"></i>
+            <span>radio</span>
+          </button>
+        </div>
+
+        <div class="channel-controls">
+          <button class="circle-btn" id="chanDown">
+            <i data-lucide="chevron-down"></i>
+          </button>
+          <div style="text-align:center;">
+            <i data-lucide="shield-check" style="color:var(--accent)"></i>
+            <div style="font-size:9px; color:#737373; font-weight:900; letter-spacing:0.2em; text-transform:uppercase; margin-top:4px;">P2P Link</div>
+          </div>
+          <button class="circle-btn" id="chanUp">
+            <i data-lucide="chevron-up"></i>
+          </button>
+        </div>
+
+        <div class="ptt-wrap">
+          <div class="ring" id="ringTx"></div>
+          <div class="ring rx" id="ringRx"></div>
+          <button class="ptt" id="pttBtn">
+            <div class="ptt-icon"><i data-lucide="mic" style="color:#e5f8ef"></i></div>
+            <div style="font-size:11px; letter-spacing:0.3em; text-transform:uppercase;">Bicara</div>
+          </button>
+        </div>
+
+        <div class="help">
+          <i data-lucide="info"></i>
+          <span>Tahan tombol untuk bicara</span>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script>
-        // --- State Manajemen ---
-        let state = {
-            channel: 1,
-            isTalking: false,
-            isReceiving: false,
-            mode: 'wifi'
+      const state = {
+        channel: 1,
+        isTalking: false,
+        isReceiving: false,
+        connMode: "wifi",
+        autoListen: true
+      };
+
+      const MQTT_HOST = "broker.emqx.io";
+      const MQTT_PORT = 8084;
+      const TOPIC_PREFIX = "anonchat/room/";
+      let client = null;
+      let currentRoom = "";
+      let currentUser = "";
+      let rxTimeout = null;
+      let isConnected = false;
+
+      const modeInfo = {
+        wifi: { label: "WIFI DIRECT", desc: "Scan IP lokal otomatis." },
+        bt: { label: "BT MESH", desc: "Monitor broadcast Bluetooth." },
+        radio: { label: "RF SIM", desc: "Monitor frekuensi UHF/VHF." }
+      };
+
+      const els = {
+        loginOverlay: document.getElementById("login-overlay"),
+        usernameInput: document.getElementById("usernameInput"),
+        roomInput: document.getElementById("roomInput"),
+        joinBtn: document.getElementById("joinBtn"),
+        roomIdDisplay: document.getElementById("roomIdDisplay"),
+        connBadge: document.getElementById("connBadge"),
+        statusPill: document.getElementById("statusPill"),
+        statusDot: document.getElementById("statusDot"),
+        statusText: document.getElementById("statusText"),
+        channelValue: document.getElementById("channelValue"),
+        modeLabel: document.getElementById("modeLabel"),
+        activityIcon: document.getElementById("activityIcon"),
+        activityText: document.getElementById("activityText"),
+        simulateBtn: document.getElementById("simulateBtn"),
+        connButtons: Array.from(document.querySelectorAll(".conn-btn")),
+        chanDown: document.getElementById("chanDown"),
+        chanUp: document.getElementById("chanUp"),
+        pttBtn: document.getElementById("pttBtn"),
+        ringTx: document.getElementById("ringTx"),
+        ringRx: document.getElementById("ringRx"),
+        equalizer: document.getElementById("equalizer")
+      };
+
+      const audioCtxRef = { current: null };
+
+      const generateRandomRoom = () => {
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        let out = "";
+        for (let i = 0; i < 6; i++) out += chars[Math.floor(Math.random() * chars.length)];
+        return out;
+      };
+
+      const updateConnBadge = (online) => {
+        els.connBadge.textContent = online ? "Online" : "Offline";
+        els.connBadge.classList.toggle("online", online);
+      };
+
+      const publishMessage = (payloadObj) => {
+        if (!client || !isConnected || !currentRoom) return;
+        const topic = TOPIC_PREFIX + currentRoom;
+        const message = new Paho.MQTT.Message(JSON.stringify(payloadObj));
+        message.destinationName = topic;
+        try { client.send(message); } catch (e) {}
+      };
+
+      const onConnect = () => {
+        isConnected = true;
+        const topic = TOPIC_PREFIX + currentRoom;
+        client.subscribe(topic);
+        updateConnBadge(true);
+        publishMessage({ type: "join", user: currentUser, ts: Date.now() });
+      };
+
+      const onFailure = () => {
+        isConnected = false;
+        updateConnBadge(false);
+      };
+
+      const onConnectionLost = () => {
+        isConnected = false;
+        updateConnBadge(false);
+      };
+
+      const connectToRoom = () => {
+        const name = els.usernameInput.value.trim();
+        const room = els.roomInput.value.trim().toUpperCase();
+        if (!name || !room) return;
+
+        currentUser = name;
+        currentRoom = room;
+        els.roomIdDisplay.textContent = currentRoom;
+
+        const clientId = "walkitalki-" + Math.random().toString(16).slice(2);
+        client = new Paho.MQTT.Client(MQTT_HOST, MQTT_PORT, clientId);
+        client.onConnectionLost = onConnectionLost;
+        client.onMessageArrived = (message) => {
+          try {
+            const payload = JSON.parse(message.payloadString);
+            if (!payload || payload.user === currentUser) return;
+            if (payload.type === "tx_start") {
+              if (!state.isTalking) {
+                setReceiving(true);
+                triggerHaptic(60);
+                playBeep(660, 0.05, 0.02);
+              }
+              if (rxTimeout) clearTimeout(rxTimeout);
+              rxTimeout = setTimeout(() => setReceiving(false), 4000);
+            }
+            if (payload.type === "tx_stop") {
+              if (rxTimeout) clearTimeout(rxTimeout);
+              setReceiving(false);
+            }
+          } catch (e) {}
         };
 
-        // --- Sistem Audio (Web Audio API) ---
-        let audioCtx = null;
-        function initAudio() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-        }
+        const willTopic = TOPIC_PREFIX + currentRoom;
+        const willMessage = new Paho.MQTT.Message(JSON.stringify({ type: "leave", user: currentUser, ts: Date.now() }));
+        willMessage.destinationName = willTopic;
 
-        function playBeep(freq, duration, vol = 0.05) {
-            if (!audioCtx) return;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + duration);
-        }
-
-        // --- Haptic Feedback (Getaran Android) ---
-        function triggerHaptic(pattern) {
-            if (navigator.vibrate) {
-                navigator.vibrate(pattern);
-            }
-        }
-
-        // --- Logika Update UI ---
-        function updateUI() {
-            document.getElementById('channel-num').innerText = state.channel.toString().padStart(2, '0');
-            
-            // Mode Buttons
-            document.querySelectorAll('.mode-btn').forEach(b => {
-                b.className = "mode-btn flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-neutral-800 bg-neutral-900 text-neutral-500 transition-all";
-            });
-            const activeBtn = document.getElementById('mode-' + state.mode);
-            activeBtn.className = "mode-btn flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-emerald-400 bg-emerald-600 text-black shadow-lg shadow-emerald-500/20 scale-105 transition-all";
-            
-            document.getElementById('proto-label').innerText = 
-                state.mode === 'wifi' ? 'WiFi Direct' : state.mode === 'bt' ? 'BT Mesh' : 'RF UHF/VHF';
-
-            const ptt = document.getElementById('ptt-btn');
-            const pttInner = document.getElementById('ptt-inner');
-            const pttLabel = document.getElementById('ptt-label');
-            const badge = document.getElementById('status-badge');
-            const led = document.getElementById('status-led');
-            const txt = document.getElementById('status-text');
-            const ringTx = document.getElementById('ring-tx');
-            const ringRx = document.getElementById('ring-rx');
-            const actIcon = document.getElementById('activity-icon');
-            const actStat = document.getElementById('activity-status');
-
-            if (state.isTalking) {
-                ptt.className = "w-48 h-48 rounded-full flex flex-col items-center justify-center border-[14px] border-black bg-red-600 text-white shadow-2xl transition-all relative z-10 scale-95";
-                pttInner.className = "mb-2 p-4 rounded-full bg-red-700";
-                pttLabel.innerText = "Transmitting";
-                badge.className = "flex items-center gap-2 border border-red-500 bg-red-950/30 px-3 py-1.5 rounded-2xl shadow-lg";
-                led.className = "w-2 h-2 rounded-full bg-red-500 animate-pulse";
-                txt.innerText = "TX";
-                ringTx.classList.remove('hidden');
-                ringRx.classList.add('hidden');
-                actIcon.className = "w-3.5 h-3.5 text-red-500 animate-pulse";
-                actStat.innerText = "Mengirim Suara (Terenskripsi)...";
-            } else if (state.isReceiving) {
-                ptt.className = "w-48 h-48 rounded-full flex flex-col items-center justify-center border-[14px] border-blue-500 bg-blue-900 text-blue-200 opacity-60 transition-all relative z-10 pointer-events-none";
-                pttInner.className = "mb-2 p-4 rounded-full bg-blue-800";
-                pttLabel.innerText = "Menerima";
-                badge.className = "flex items-center gap-2 border border-blue-500 bg-blue-950/30 px-3 py-1.5 rounded-2xl shadow-lg";
-                led.className = "w-2 h-2 rounded-full bg-blue-500 animate-bounce";
-                txt.innerText = "RX";
-                ringRx.classList.remove('hidden');
-                ringTx.classList.add('hidden');
-                actIcon.className = "w-3.5 h-3.5 text-blue-500 animate-pulse";
-                actStat.innerText = "Sinyal Terdeteksi: Mendengarkan...";
-            } else {
-                ptt.className = "w-48 h-48 rounded-full flex flex-col items-center justify-center border-[14px] border-neutral-950 bg-emerald-600 text-emerald-950 shadow-2xl transition-all relative z-10 active:scale-90 touch-none";
-                pttInner.className = "mb-2 p-4 rounded-full bg-emerald-700";
-                pttLabel.innerText = "Tahan Bicara";
-                badge.className = "flex items-center gap-2 border border-neutral-800 bg-neutral-900 px-3 py-1.5 rounded-2xl shadow-lg";
-                led.className = "w-2 h-2 rounded-full bg-emerald-500";
-                txt.innerText = "Ready";
-                ringTx.classList.add('hidden');
-                ringRx.classList.add('hidden');
-                actIcon.className = "w-3.5 h-3.5 text-neutral-700";
-                actStat.innerText = "Memonitor Frekuensi...";
-            }
-        }
-
-        // --- Event Handlers ---
-        window.setMode = (m) => {
-            initAudio();
-            state.mode = m;
-            triggerHaptic(20);
-            playBeep(1000, 0.05);
-            updateUI();
+        const options = {
+          useSSL: true,
+          timeout: 10,
+          keepAliveInterval: 30,
+          onSuccess: onConnect,
+          onFailure: onFailure,
+          willMessage: willMessage
         };
+        try { client.connect(options); } catch (e) { onFailure(); }
 
-        window.changeChannel = (v) => {
-            initAudio();
-            state.channel += v;
-            if (state.channel > 16) state.channel = 1;
-            if (state.channel < 1) state.channel = 16;
-            triggerHaptic(10);
-            playBeep(1200, 0.05);
-            updateUI();
-        };
+        els.loginOverlay.classList.add("hidden");
+      };
 
-        const pttBtn = document.getElementById('ptt-btn');
-        function startTalking(e) {
-            if (state.isReceiving) return;
-            initAudio();
-            state.isTalking = true;
-            triggerHaptic(50); // Getar pendek saat mulai bicara
-            playBeep(880, 0.08); // Nada tinggi mulai
-            updateUI();
+      const preventDefault = (e) => {
+        if (e.touches && e.touches.length > 1) e.preventDefault();
+      };
+      document.addEventListener("touchstart", preventDefault, { passive: false });
+
+      const initAudio = () => {
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
         }
+      };
+      window.addEventListener("click", initAudio, { once: true });
+      window.addEventListener("touchstart", initAudio, { once: true });
 
-        function stopTalking() {
-            if (!state.isTalking) return;
-            state.isTalking = false;
-            triggerHaptic([30, 50, 30]); // Getar pola roger beep
-            playBeep(440, 0.12); // Nada rendah berhenti
-            updateUI();
+      const playBeep = (freq, duration, vol = 0.05) => {
+        if (!audioCtxRef.current) return;
+        const osc = audioCtxRef.current.createOscillator();
+        const gain = audioCtxRef.current.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, audioCtxRef.current.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtxRef.current.currentTime);
+        osc.connect(gain);
+        gain.connect(audioCtxRef.current.destination);
+        osc.start();
+        osc.stop(audioCtxRef.current.currentTime + duration);
+      };
+
+      const triggerHaptic = (ms) => {
+        if (navigator.vibrate) navigator.vibrate(ms);
+      };
+
+      const setTalking = (val) => {
+        state.isTalking = val;
+        if (val) state.isReceiving = false;
+        render();
+      };
+
+      const setReceiving = (val) => {
+        if (state.isTalking) return;
+        state.isReceiving = val;
+        render();
+      };
+
+      const handleStartTalking = (e) => {
+        if (state.isReceiving) return;
+        e.preventDefault();
+        setTalking(true);
+        triggerHaptic(50);
+        playBeep(880, 0.08);
+        publishMessage({ type: "tx_start", user: currentUser, ts: Date.now(), channel: state.channel });
+      };
+
+      const handleStopTalking = (e) => {
+        e.preventDefault();
+        if (!state.isTalking) return;
+        setTalking(false);
+        triggerHaptic([30, 50, 30]);
+        playBeep(440, 0.12);
+        publishMessage({ type: "tx_stop", user: currentUser, ts: Date.now(), channel: state.channel });
+      };
+
+      const simulateIncomingSignal = () => {
+        if (state.isTalking || state.isReceiving) return;
+        setReceiving(true);
+        triggerHaptic(100);
+        playBeep(660, 0.05, 0.02);
+        setTimeout(() => {
+          setReceiving(false);
+          triggerHaptic(50);
+          playBeep(440, 0.1, 0.02);
+        }, 3000);
+      };
+
+      const changeChannel = (dir) => {
+        let newChan = state.channel + dir;
+        if (newChan > 16) newChan = 1;
+        if (newChan < 1) newChan = 16;
+        state.channel = newChan;
+        triggerHaptic(10);
+        playBeep(1200, 0.05);
+        render();
+      };
+
+      const updateEqualizer = () => {
+        const active = state.isTalking || state.isReceiving;
+        const bars = els.equalizer.children;
+        for (let i = 0; i < bars.length; i++) {
+          const bar = bars[i];
+          if (active) {
+            bar.style.height = (Math.random() * 80 + 20) + "%";
+            bar.style.background = state.isTalking ? "#ef4444" : "var(--accent)";
+          } else {
+            bar.style.height = "4px";
+            bar.style.background = "var(--accent-dark)";
+          }
         }
+      };
 
-        // Pointer Events: Solusi terbaik untuk layar sentuh Android (tanpa delay)
-        pttBtn.addEventListener('pointerdown', startTalking);
-        window.addEventListener('pointerup', stopTalking);
-        window.addEventListener('pointercancel', stopTalking); // Jika interupsi layar (notif dsb)
+      const render = () => {
+        const { isTalking, isReceiving, channel, connMode } = state;
+        const status = isTalking ? "TX" : isReceiving ? "RX" : "Ready";
+        els.statusText.textContent = status;
+        els.statusPill.classList.toggle("tx", isTalking);
+        els.statusPill.classList.toggle("rx", isReceiving);
+        els.statusDot.classList.toggle("tx", isTalking);
+        els.statusDot.classList.toggle("rx", isReceiving);
+        els.channelValue.textContent = String(channel).padStart(2, "0");
+        els.modeLabel.textContent = modeInfo[connMode].label;
+        els.activityText.textContent = isTalking
+          ? "Sending Voice..."
+          : isReceiving
+          ? "Incoming Voice..."
+          : "Ready to receive";
+        els.activityIcon.style.color = (isTalking || isReceiving) ? "var(--accent)" : "#404040";
 
-        // Simulator Sinyal Masuk
-        document.getElementById('sim-btn').addEventListener('click', () => {
-            if (state.isTalking || state.isReceiving) return;
-            initAudio();
-            state.isReceiving = true;
-            triggerHaptic(100); // Getar panjang saat ada sinyal masuk
-            playBeep(660, 0.05, 0.02);
-            updateUI();
-            setTimeout(() => {
-                state.isReceiving = false;
-                triggerHaptic(40);
-                playBeep(440, 0.1, 0.02);
-                updateUI();
-            }, 3000);
+        els.simulateBtn.classList.toggle("disabled", isTalking || isReceiving);
+        els.simulateBtn.disabled = isTalking || isReceiving;
+
+        els.connButtons.forEach((btn) => {
+          const active = btn.dataset.mode === connMode;
+          btn.classList.toggle("active", active);
         });
 
-        // --- Visualizer Bar Animasi ---
-        const visualizer = document.getElementById('visualizer');
-        const barCount = 24;
-        for (let i = 0; i < barCount; i++) {
-            const bar = document.createElement('div');
-            bar.className = "w-1 rounded-t-full transition-all duration-150 bg-emerald-900 h-1";
-            visualizer.appendChild(bar);
+        els.pttBtn.classList.toggle("tx", isTalking);
+        els.pttBtn.classList.toggle("rx", isReceiving);
+        els.pttBtn.disabled = isReceiving;
+        els.ringTx.classList.toggle("show", isTalking);
+        els.ringRx.classList.toggle("show", isReceiving);
+
+        const pttLabel = els.pttBtn.querySelector("div:last-child");
+        pttLabel.textContent = isReceiving ? "Menerima" : "Bicara";
+
+        updateEqualizer();
+      };
+
+      const buildEqualizer = () => {
+        for (let i = 0; i < 20; i++) {
+          const bar = document.createElement("div");
+          bar.className = "bar";
+          els.equalizer.appendChild(bar);
         }
+      };
 
-        setInterval(() => {
-            const bars = visualizer.querySelectorAll('div');
-            bars.forEach(bar => {
-                if (state.isTalking) {
-                    bar.style.height = (Math.random() * 80 + 20) + '%';
-                    bar.style.backgroundColor = '#ef4444'; // Merah saat TX
-                } else if (state.isReceiving) {
-                    bar.style.height = (Math.random() * 80 + 20) + '%';
-                    bar.style.backgroundColor = '#3b82f6'; // Biru saat RX
-                } else {
-                    bar.style.height = '4px';
-                    bar.style.backgroundColor = '#064e3b'; // Hijau redup saat stand-by
-                }
-            });
-        }, 120);
+      els.simulateBtn.addEventListener("click", simulateIncomingSignal);
+      els.chanDown.addEventListener("click", () => changeChannel(-1));
+      els.chanUp.addEventListener("click", () => changeChannel(1));
+      els.connButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          state.connMode = btn.dataset.mode;
+          triggerHaptic(15);
+          playBeep(1000, 0.05);
+          render();
+        });
+      });
 
-        // --- Update Jam Real-time ---
-        function updateClock() {
-            const now = new Date();
-            document.getElementById('clock').innerText = 
-                now.getHours().toString().padStart(2, '0') + ":" + 
-                now.getMinutes().toString().padStart(2, '0');
-        }
-        setInterval(updateClock, 1000);
-        updateClock();
+      els.pttBtn.addEventListener("pointerdown", handleStartTalking);
+      els.pttBtn.addEventListener("pointerup", handleStopTalking);
+      els.pttBtn.addEventListener("pointerleave", handleStopTalking);
 
-        // Inisialisasi Ikon Lucide
-        lucide.createIcons();
+      els.roomInput.value = generateRandomRoom();
+      els.joinBtn.addEventListener("click", connectToRoom);
+      els.usernameInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") connectToRoom();
+      });
+      els.roomInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") connectToRoom();
+      });
+
+      window.addEventListener("beforeunload", () => {
+        try { publishMessage({ type: "leave", user: currentUser, ts: Date.now() }); } catch (e) {}
+        try { if (client) client.disconnect(); } catch (e) {}
+      });
+
+      buildEqualizer();
+      render();
+      setInterval(updateEqualizer, 160);
+
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
     </script>
-</body>
+  </body>
 </html>
