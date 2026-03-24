@@ -1,259 +1,199 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Talkie Universal</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .ptt-button {
-            transition: all 0.2s ease;
-            touch-action: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .ptt-active {
-            transform: scale(0.95);
-            background-color: #ef4444 !important;
-            box-shadow: 0 0 40px rgba(239, 68, 68, 0.7);
-            border-color: #7f1d1d !important;
-        }
-        .wave-bar {
-            width: 4px;
-            background-color: #eab308;
-            border-radius: 2px;
-            display: none;
-        }
-        .ptt-active .wave-bar {
-            display: block;
-        }
-        @keyframes wave-anim {
-            0%, 100% { height: 10px; }
-            50% { height: 40px; }
-        }
-        .channel-display {
-            font-family: 'Courier New', Courier, monospace;
-            text-shadow: 0 0 10px rgba(234, 179, 8, 0.5);
-        }
-        .conn-tag {
-            font-size: 9px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            text-transform: uppercase;
-            font-weight: bold;
-        }
-    </style>
-</head>
-<body class="bg-gray-950 text-white flex flex-col items-center justify-between min-h-screen p-6 font-sans overflow-hidden">
+import React, { useState, useEffect, useRef } from 'react';
+import { Mic, Wifi, Bluetooth, Radio, Signal, Battery, Activity, ShieldCheck, ChevronUp, ChevronDown } from 'lucide-react';
 
-    <!-- Header & Status -->
-    <div class="w-full max-w-md">
-        <div class="flex justify-between items-center mb-4">
-            <h1 class="text-2xl font-black tracking-tighter text-yellow-500 italic uppercase">Multi-Talkie</h1>
-            <div class="flex items-center gap-2 bg-gray-900 px-3 py-1 rounded-full border border-gray-800">
-                <div id="status-led" class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest" id="conn-status">Ready</span>
-            </div>
+const App = () => {
+  const [channel, setChannel] = useState(1);
+  const [isTalking, setIsTalking] = useState(false);
+  const [connMode, setConnMode] = useState('wifi'); // 'wifi', 'data', 'bt', 'radio'
+  const [volume, setVolume] = useState(85);
+  
+  // Simulasi Audio Context untuk efek suara beep
+  const playBeep = (freq, duration) => {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    } catch (e) {
+      console.log("Audio not supported or blocked");
+    }
+  };
+
+  const handleStartTalking = () => {
+    setIsTalking(true);
+    playBeep(880, 0.1);
+  };
+
+  const handleStopTalking = () => {
+    setIsTalking(false);
+    playBeep(440, 0.15);
+  };
+
+  const changeChannel = (dir) => {
+    let newChan = channel + dir;
+    if (newChan > 16) newChan = 1;
+    if (newChan < 1) newChan = 16;
+    setChannel(newChan);
+    playBeep(1200, 0.05);
+  };
+
+  // Status deskripsi berdasarkan mode
+  const getModeInfo = () => {
+    switch(connMode) {
+      case 'wifi': return { label: 'WIFI LOKAL', tag: 'P2P', desc: 'Terhubung via hotspot tanpa internet.' };
+      case 'data': return { label: 'PAKET DATA', tag: 'CLOUD', desc: 'Terhubung jarak jauh via server internet.' };
+      case 'bt': return { label: 'BLUETOOTH', tag: 'MESH', desc: 'Koneksi langsung antar perangkat jarak dekat.' };
+      case 'radio': return { label: 'RADIO SIM', tag: 'RF', desc: 'Simulasi frekuensi radio UHF/VHF.' };
+      default: return { label: '', tag: '', desc: '' };
+    }
+  };
+
+  const modeInfo = getModeInfo();
+
+  return (
+    <div className="flex flex-col min-h-screen bg-neutral-950 text-white font-sans select-none items-center p-4">
+      {/* Status Bar Simulasi */}
+      <div className="w-full max-w-md flex justify-between items-center px-4 py-2 opacity-60 text-[10px] font-bold">
+        <span>12:00</span>
+        <div className="flex gap-2 items-center">
+          <Bluetooth size={10} />
+          <Wifi size={10} />
+          <Battery size={12} />
         </div>
+      </div>
 
-        <!-- Dashboard Screen -->
-        <div class="bg-black rounded-xl p-4 border-2 border-gray-800 shadow-inner relative overflow-hidden mb-4">
-            <div class="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none" style="background-image: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06)); background-size: 100% 2px, 3px 100%;"></div>
-            
-            <div class="flex justify-between items-start mb-2">
-                <div>
-                    <p class="text-[10px] text-yellow-700 font-bold uppercase">Saluran</p>
-                    <div class="flex items-baseline gap-1">
-                        <span class="text-4xl font-bold text-yellow-500 channel-display" id="channel-num">01</span>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <p class="text-[10px] text-yellow-700 font-bold uppercase">Jaringan</p>
-                    <p class="text-xs text-yellow-500 font-mono" id="mode-text">WIFI LOKAL</p>
-                </div>
-            </div>
-
-            <div class="flex justify-between items-end h-6">
-                <div class="flex gap-0.5 items-end h-full">
-                    <div class="w-1.5 h-1 bg-yellow-500"></div>
-                    <div class="w-1.5 h-2 bg-yellow-500"></div>
-                    <div class="w-1.5 h-3 bg-yellow-500"></div>
-                    <div class="w-1.5 h-4 bg-gray-800"></div>
-                </div>
-                <div id="active-mode-tag" class="conn-tag bg-yellow-900 text-yellow-400 border border-yellow-700">P2P</div>
-            </div>
+      {/* Header */}
+      <div className="w-full max-center max-w-md flex justify-between items-center mt-4">
+        <h1 className="text-2xl font-black italic tracking-tighter text-yellow-500">PRO-TALKIE</h1>
+        <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 px-3 py-1 rounded-full">
+          <div className={`w-2 h-2 rounded-full ${isTalking ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`} />
+          <span className="text-[10px] uppercase font-bold text-neutral-400">{isTalking ? 'Transmitting' : 'Ready'}</span>
         </div>
+      </div>
 
-        <!-- Connection Mode Selector -->
-        <div class="grid grid-cols-4 gap-2 mb-6">
-            <button onclick="setConnMode('wifi')" id="btn-wifi" class="mode-btn flex flex-col items-center p-2 bg-yellow-600 rounded-lg border-b-4 border-yellow-800 transition-all">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.343 9.343c5.857-5.858 15.355-5.858 21.213 0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                <span class="text-[8px] font-bold">WIFI</span>
-            </button>
-            <button onclick="setConnMode('data')" id="btn-data" class="mode-btn flex flex-col items-center p-2 bg-gray-800 rounded-lg border-b-4 border-gray-900 opacity-60 transition-all">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                <span class="text-[8px] font-bold">DATA</span>
-            </button>
-            <button onclick="setConnMode('bt')" id="btn-bt" class="mode-btn flex flex-col items-center p-2 bg-gray-800 rounded-lg border-b-4 border-gray-900 opacity-60 transition-all">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M7 7l10 10-5 5V2l5 5L7 17" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                <span class="text-[8px] font-bold">BT</span>
-            </button>
-            <button onclick="setConnMode('radio')" id="btn-radio" class="mode-btn flex flex-col items-center p-2 bg-gray-800 rounded-lg border-b-4 border-gray-900 opacity-60 transition-all">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41M12 7a5 5 0 100 10 5 5 0 000-10z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                <span class="text-[8px] font-bold">RADIO</span>
-            </button>
-        </div>
-    </div>
-
-    <!-- Central Control: Channel & PTT -->
-    <div class="w-full max-w-md flex flex-col items-center">
-        <!-- Channel Switcher -->
-        <div class="flex items-center gap-4 mb-6 bg-gray-900 p-2 rounded-2xl border border-gray-800">
-            <button id="chan-down" class="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center active:scale-90 border-b-4 border-black text-yellow-500 font-bold">-</button>
-            <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest px-2">Channel Set</span>
-            <button id="chan-up" class="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center active:scale-90 border-b-4 border-black text-yellow-500 font-bold">+</button>
-        </div>
-
-        <div id="visualizer" class="flex items-center gap-1.5 h-10 mb-4">
-            <div class="wave-bar" style="animation: wave-anim 0.4s infinite"></div>
-            <div class="wave-bar" style="animation: wave-anim 0.7s infinite"></div>
-            <div class="wave-bar" style="animation: wave-anim 0.5s infinite"></div>
-            <div class="wave-bar" style="animation: wave-anim 0.9s infinite"></div>
-            <div class="wave-bar" style="animation: wave-anim 0.6s infinite"></div>
-        </div>
+      {/* Screen Display */}
+      <div className="w-full max-w-md bg-black border-2 border-neutral-800 rounded-2xl p-6 mt-6 shadow-inner relative overflow-hidden">
+        {/* Scanlines Effect */}
+        <div className="absolute inset-0 pointer-events-none opacity-5 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%]" />
         
-        <button id="ptt-btn" class="ptt-button w-52 h-52 rounded-full bg-yellow-600 border-[10px] border-gray-900 flex flex-col items-center justify-center shadow-2xl relative">
-            <div class="absolute inset-0 rounded-full border-4 border-yellow-500 opacity-10"></div>
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-20 h-20 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-            </svg>
-            <span class="text-[10px] font-black tracking-[0.2em] text-yellow-950">PUSH TO TALK</span>
+        <div className="flex justify-between">
+          <div>
+            <p className="text-[10px] text-yellow-800 font-bold uppercase tracking-widest">Channel</p>
+            <span className="text-5xl font-mono font-bold text-yellow-500 leading-none">
+              {channel.toString().padStart(2, '0')}
+            </span>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] text-yellow-800 font-bold uppercase tracking-widest">Network Mode</p>
+            <p className="text-sm font-bold text-yellow-500">{modeInfo.label}</p>
+            <div className="flex justify-end gap-0.5 mt-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className={`w-1.5 rounded-t-sm ${i <= 3 ? 'bg-yellow-500' : 'bg-neutral-800'}`} style={{ height: i * 3 }} />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-between items-end">
+          <div className="bg-yellow-900/20 px-2 py-0.5 rounded border border-yellow-700/30">
+            <span className="text-[10px] text-yellow-600 font-bold uppercase">{modeInfo.tag}</span>
+          </div>
+          <div className="flex items-center gap-2 text-neutral-500">
+            <Activity size={12} />
+            <span className="text-[10px] font-mono">ENCRYPTED</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Connection Selector */}
+      <div className="w-full max-w-md grid grid-cols-4 gap-2 mt-6">
+        {[
+          { id: 'wifi', icon: <Wifi size={18} />, label: 'WIFI' },
+          { id: 'data', icon: <Signal size={18} />, label: 'DATA' },
+          { id: 'bt', icon: <Bluetooth size={18} />, label: 'BT' },
+          { id: 'radio', icon: <Radio size={18} />, label: 'RADIO' }
+        ].map((m) => (
+          <button
+            key={m.id}
+            onClick={() => { setConnMode(m.id); playBeep(1000, 0.05); }}
+            className={`flex flex-col items-center justify-center p-3 rounded-xl border-b-4 transition-all active:scale-95 ${
+              connMode === m.id 
+                ? 'bg-yellow-600 border-yellow-800 text-black' 
+                : 'bg-neutral-900 border-black text-neutral-500'
+            }`}
+          >
+            {m.icon}
+            <span className="text-[9px] font-bold mt-1 uppercase">{m.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Channel Controls */}
+      <div className="w-full max-w-md flex items-center justify-between mt-8 px-4">
+        <button 
+          onClick={() => changeChannel(-1)}
+          className="w-14 h-14 bg-neutral-900 rounded-2xl flex items-center justify-center border-b-4 border-black active:scale-90 transition-all text-yellow-500"
+        >
+          <ChevronDown size={28} />
         </button>
-    </div>
-
-    <!-- Multi-Link Information -->
-    <div class="w-full max-w-md bg-gray-900/30 p-4 rounded-xl border border-gray-800/50 mb-4">
-        <div class="flex justify-between items-center mb-2">
-            <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Info Koneksi</span>
-            <span class="text-[10px] text-green-500 font-mono" id="ip-display">Local: 192.168.1.15</span>
+        <div className="text-center">
+          <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-[0.2em]">Select Channel</p>
         </div>
-        <p id="conn-desc" class="text-[10px] text-gray-400 italic">Mode WiFi Lokal: Gunakan hotspot yang sama untuk terhubung gratis tanpa internet.</p>
+        <button 
+          onClick={() => changeChannel(1)}
+          className="w-14 h-14 bg-neutral-900 rounded-2xl flex items-center justify-center border-b-4 border-black active:scale-90 transition-all text-yellow-500"
+        >
+          <ChevronUp size={28} />
+        </button>
+      </div>
+
+      {/* PTT Button Section */}
+      <div className="flex-1 flex items-center justify-center w-full max-w-md my-8">
+        <div className="relative">
+          {/* Animated rings when talking */}
+          {isTalking && (
+            <>
+              <div className="absolute inset-0 rounded-full bg-red-500/20 animate-ping" />
+              <div className="absolute -inset-4 rounded-full bg-red-500/10 animate-pulse" />
+            </>
+          )}
+          
+          <button
+            onMouseDown={handleStartTalking}
+            onMouseUp={handleStopTalking}
+            onTouchStart={(e) => { e.preventDefault(); handleStartTalking(); }}
+            onTouchEnd={(e) => { e.preventDefault(); handleStopTalking(); }}
+            className={`w-52 h-52 rounded-full flex flex-col items-center justify-center border-[12px] transition-all relative z-10 shadow-2xl active:scale-95 ${
+              isTalking 
+                ? 'bg-red-600 border-red-950 text-red-100' 
+                : 'bg-yellow-600 border-neutral-900 text-yellow-950'
+            }`}
+          >
+            <Mic size={64} className="mb-2" />
+            <span className="font-black text-xs tracking-widest">PUSH TO TALK</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Info Footer */}
+      <div className="w-full max-w-md bg-neutral-900/50 border border-neutral-800/50 p-4 rounded-xl mb-6">
+        <div className="flex items-center gap-3 text-neutral-400">
+          <ShieldCheck size={16} className="text-green-600" />
+          <p className="text-[10px] italic leading-tight">{modeInfo.desc}</p>
+        </div>
+      </div>
+
+      <div className="text-[9px] text-neutral-700 uppercase font-bold tracking-widest pb-4">
+        V.2.1 Multi-Link Architecture
+      </div>
     </div>
+  );
+};
 
-    <script>
-        const pttBtn = document.getElementById('ptt-btn');
-        const modeText = document.getElementById('mode-text');
-        const connDesc = document.getElementById('conn-desc');
-        const modeTag = document.getElementById('active-mode-tag');
-        const channelNumDisplay = document.getElementById('channel-num');
-        const statusLed = document.getElementById('status-led');
-        
-        let currentChannel = 1;
-        let mediaRecorder;
-        let audioChunks = [];
-
-        // Fitur Ganti Mode Koneksi
-        function setConnMode(mode) {
-            // Reset semua tombol
-            document.querySelectorAll('.mode-btn').forEach(btn => {
-                btn.classList.replace('bg-yellow-600', 'bg-gray-800');
-                btn.classList.replace('border-yellow-800', 'border-gray-900');
-                btn.style.opacity = "0.6";
-            });
-
-            // Aktifkan tombol yang dipilih
-            const activeBtn = document.getElementById(`btn-${mode}`);
-            activeBtn.classList.replace('bg-gray-800', 'bg-yellow-600');
-            activeBtn.classList.replace('border-gray-900', 'border-yellow-800');
-            activeBtn.style.opacity = "1";
-
-            // Update UI Berdasarkan Mode
-            switch(mode) {
-                case 'wifi':
-                    modeText.innerText = "WIFI LOKAL";
-                    modeTag.innerText = "P2P / WLAN";
-                    connDesc.innerText = "Mode WiFi Lokal: Gunakan hotspot yang sama untuk terhubung gratis tanpa internet.";
-                    break;
-                case 'data':
-                    modeText.innerText = "PAKET DATA";
-                    modeTag.innerText = "WEBCLOUD";
-                    connDesc.innerText = "Mode Paket Data: Terhubung jarak jauh via internet. Menggunakan server cloud.";
-                    break;
-                case 'bt':
-                    modeText.innerText = "BLUETOOTH";
-                    modeTag.innerText = "MESH";
-                    connDesc.innerText = "Mode Bluetooth: Terhubung langsung antar perangkat tanpa router (Jarak dekat).";
-                    break;
-                case 'radio':
-                    modeText.innerText = "RF SIMULATOR";
-                    modeTag.innerText = "RADIO";
-                    connDesc.innerText = "Mode Radio: Simulasi frekuensi UHF. Memerlukan hardware external untuk fungsi asli.";
-                    break;
-            }
-            playBeep(1000, 0.05);
-        }
-
-        function updateChannel(val) {
-            currentChannel += val;
-            if (currentChannel > 16) currentChannel = 1;
-            if (currentChannel < 1) currentChannel = 16;
-            channelNumDisplay.innerText = currentChannel.toString().padStart(2, '0');
-            playBeep(1200, 0.05);
-        }
-
-        document.getElementById('chan-up').onclick = () => updateChannel(1);
-        document.getElementById('chan-down').onclick = () => updateChannel(-1);
-
-        function playBeep(freq, duration) {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + duration);
-        }
-
-        async function initMic() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
-                mediaRecorder.onstop = () => {
-                    console.log(`Mengirim data di saluran ${currentChannel} via mode ${modeText.innerText}`);
-                    audioChunks = [];
-                };
-            } catch (err) { console.error(err); }
-        }
-        initMic();
-
-        const startTalking = (e) => {
-            if (e.cancelable) e.preventDefault();
-            if (mediaRecorder && mediaRecorder.state === "inactive") {
-                pttBtn.classList.add('ptt-active');
-                statusLed.classList.replace('bg-green-500', 'bg-red-500');
-                mediaRecorder.start();
-                playBeep(880, 0.1);
-            }
-        };
-
-        const stopTalking = (e) => {
-            if (e.cancelable) e.preventDefault();
-            if (mediaRecorder && mediaRecorder.state === "recording") {
-                pttBtn.classList.remove('ptt-active');
-                statusLed.classList.replace('bg-red-500', 'bg-green-500');
-                mediaRecorder.stop();
-                playBeep(440, 0.15);
-            }
-        };
-
-        pttBtn.addEventListener('mousedown', startTalking);
-        window.addEventListener('mouseup', stopTalking);
-        pttBtn.addEventListener('touchstart', startTalking);
-        window.addEventListener('touchend', stopTalking);
-
-    </script>
-</body>
-</html>
+export default App;
